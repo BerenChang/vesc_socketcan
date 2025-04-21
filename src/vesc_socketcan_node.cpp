@@ -1,6 +1,7 @@
 #include <linux/can.h>
 #include <linux/can/raw.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <net/if.h>
 #include <cstring>
 #include <unistd.h>
@@ -19,7 +20,7 @@ public:
         setup_can_socket("can0");
 
         using std::placeholders::_1;
-        current_sub_ = this->create_subscription<std_msgs::msg::Float32>(
+        current_sub_ = this->create_subscription<vesc_msgs::msg::Current>(
             "vesc/set_current", 10, std::bind(&VescCanNode::set_current_cb, this, _1));
         // duty_sub_ = this->create_subscription<std_msgs::msg::Float32>(
         //     "vesc/set_duty", 10, std::bind(&VescCanNode::set_duty_cb, this, _1));
@@ -43,7 +44,7 @@ private:
     std::atomic<bool> stop_listener_;
     std::thread listener_thread_;
 
-    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr current_sub_;
+    rclcpp::Subscription<vesc_msgs::msg::Current>::SharedPtr current_sub_;
     rclcpp::Subscription<vesc_msgs::msg::ThrottleBoard>::SharedPtr tb_sub_;
     // rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr duty_sub_;
     // rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr rpm_sub_;
@@ -57,21 +58,21 @@ private:
         return;
         }
 
-        // struct ifreq ifr;
-        // std::strncpy(ifr.ifr_name, iface_name.c_str(), IFNAMSIZ);
-        // if (ioctl(can_socket_, SIOCGIFINDEX, &ifr) < 0) {
-        // RCLCPP_FATAL(this->get_logger(), "Failed to get interface index");
-        // return;
-        // }
+        struct ifreq ifr;
+        std::strncpy(ifr.ifr_name, iface_name.c_str(), IFNAMSIZ);
+        if (ioctl(can_socket_, SIOCGIFINDEX, &ifr) < 0) {
+        RCLCPP_FATAL(this->get_logger(), "Failed to get interface index");
+        return;
+        }
 
-        // struct sockaddr_can addr = {};
-        // addr.can_family = AF_CAN;
-        // addr.can_ifindex = ifr.ifr_ifindex;
+        struct sockaddr_can addr = {};
+        addr.can_family = AF_CAN;
+        addr.can_ifindex = ifr.ifr_ifindex;
 
-        // if (bind(can_socket_, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        // RCLCPP_FATAL(this->get_logger(), "Failed to bind CAN socket");
-        // return;
-        // }
+        if (bind(can_socket_, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        RCLCPP_FATAL(this->get_logger(), "Failed to bind CAN socket");
+        return;
+        }
 
         RCLCPP_INFO(this->get_logger(), "CAN socket setup on %s", iface_name.c_str());
     }
@@ -86,7 +87,7 @@ private:
         int32_t send_index = 0;
         // uint8_t buffer[8] = {0};
 
-        buffer_append_float32(frame.data, static_cast<int32_t>(current), 1e3, &send_index);
+        buffer_append_float32(frame.data, current, 1e3, &send_index);
         // frame.data = buffer;
 
         write(can_socket_, &frame, sizeof(frame));
@@ -99,12 +100,12 @@ private:
         board += 1; // map board from [-1, 1] to [0, 2] for transmission
         struct can_frame frame;
         frame.can_id = vesc_id | (comm_can_id << 8);
-        frame.can_dlc = 4;
+        frame.can_dlc = 8;
         int32_t send_index = 0;
         // uint8_t buffer[8] = {0};
 
-        buffer_append_float32(frame.data, static_cast<int32_t>(throttle), 1e5, &send_index);
-        buffer_append_float32(frame.data, static_cast<int32_t>(board), 1e5, &send_index);
+        buffer_append_float32(frame.data, throttle, 1e5, &send_index);
+        buffer_append_float32(frame.data, board, 1e5, &send_index);
         // frame.data = buffer;
 
         write(can_socket_, &frame, sizeof(frame));
