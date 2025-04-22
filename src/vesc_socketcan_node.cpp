@@ -54,15 +54,15 @@ private:
     void setup_can_socket(const std::string &iface_name) {
         can_socket_ = socket(PF_CAN, SOCK_RAW, CAN_RAW);
         if (can_socket_ < 0) {
-        RCLCPP_FATAL(this->get_logger(), "Failed to create CAN socket");
-        return;
+            RCLCPP_FATAL(this->get_logger(), "Failed to create CAN socket");
+            return;
         }
 
         struct ifreq ifr;
         std::strncpy(ifr.ifr_name, iface_name.c_str(), IFNAMSIZ);
         if (ioctl(can_socket_, SIOCGIFINDEX, &ifr) < 0) {
-        RCLCPP_FATAL(this->get_logger(), "Failed to get interface index");
-        return;
+            RCLCPP_FATAL(this->get_logger(), "Failed to get interface index");
+            return;
         }
 
         struct sockaddr_can addr = {};
@@ -70,8 +70,8 @@ private:
         addr.can_ifindex = ifr.ifr_ifindex;
 
         if (bind(can_socket_, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        RCLCPP_FATAL(this->get_logger(), "Failed to bind CAN socket");
-        return;
+            RCLCPP_FATAL(this->get_logger(), "Failed to bind CAN socket");
+            return;
         }
 
         RCLCPP_INFO(this->get_logger(), "CAN socket setup on %s", iface_name.c_str());
@@ -90,7 +90,12 @@ private:
         buffer_append_float32(frame.data, current, 1e3, &send_index);
         // frame.data = buffer;
 
-        write(can_socket_, &frame, sizeof(frame));
+        sprintf(frame.data);
+
+        if (write(can_socket_, &frame, sizeof(frame)) != sizeof(struct can_frame)) {
+            RCLCPP_FATAL(this->logger(), "CAN socket write error on %s", iface_name.c_str());
+            return;
+        }
     }
 
     void send_throttle_board_command(uint8_t vesc_id, 
