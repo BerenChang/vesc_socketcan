@@ -93,7 +93,7 @@ private:
         sprintf(frame.data);
 
         if (write(can_socket_, &frame, sizeof(frame)) != sizeof(struct can_frame)) {
-            RCLCPP_FATAL(this->logger(), "CAN socket write error on %s", iface_name.c_str());
+            RCLCPP_FATAL(this->get_logger(), "CAN socket write error");
             return;
         }
     }
