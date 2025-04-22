@@ -1,3 +1,4 @@
+#include <iostream>
 #include <linux/can.h>
 #include <linux/can/raw.h>
 #include <sys/socket.h>
@@ -90,7 +91,11 @@ private:
         buffer_append_float32(frame.data, current, 1e3, &send_index);
         // frame.data = buffer;
 
-        sprintf(frame.data);
+        std::cout << "frame data: ";
+        for (int i = 0; i < 8; ++i) {
+            std::cout << static_cast<int>(frame.data[i]) << " ";
+        }
+        std::cout << std::endl;
 
         if (write(can_socket_, &frame, sizeof(frame)) != sizeof(struct can_frame)) {
             RCLCPP_FATAL(this->get_logger(), "CAN socket write error");
