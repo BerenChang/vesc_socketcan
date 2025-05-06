@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cerrno>
 #include <linux/can.h>
 #include <linux/can/raw.h>
 #include <sys/socket.h>
@@ -51,7 +52,6 @@ private:
     // rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr rpm_sub_;
     // rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr twist_sub_;
 
-
     void setup_can_socket(const std::string &iface_name) {
         can_socket_ = socket(PF_CAN, SOCK_RAW, CAN_RAW);
         if (can_socket_ < 0) {
@@ -60,7 +60,8 @@ private:
         }
 
         struct ifreq ifr;
-        std::strncpy(ifr.ifr_name, iface_name.c_str(), IFNAMSIZ);
+        // std::strncpy(ifr.ifr_name, iface_name.c_str(), IFNAMSIZ);
+        std::strncpy(ifr.ifr_name, "can0", IFNAMSIZ-1);
         if (ioctl(can_socket_, SIOCGIFINDEX, &ifr) < 0) {
             RCLCPP_FATAL(this->get_logger(), "Failed to get interface index");
             return;
@@ -84,6 +85,8 @@ private:
 
         struct can_frame frame;
         frame.can_id = vesc_id | (comm_can_id << 8);
+        frame.can_id = 0x12 | (comm_can_id << 8);
+        frame.can_id |= CAN_EFF_FLAG;
         frame.can_dlc = 4;
         int32_t send_index = 0;
         // uint8_t buffer[8] = {0};
@@ -91,14 +94,19 @@ private:
         buffer_append_float32(frame.data, current, 1e3, &send_index);
         // frame.data = buffer;
 
-        std::cout << "frame data: ";
-        for (int i = 0; i < 8; ++i) {
-            std::cout << static_cast<int>(frame.data[i]) << " ";
-        }
-        std::cout << std::endl;
-
+        // std::cout << "frame data: ";
+        // for (int i = 0; i < 4; ++i) {
+        //     std::cout << static_cast<int>(frame.data[i]) << " ";
+        // }
+        // std::cout << std::endl;
+        
+        // std::cout << "sizeof frame: " << static_cast<int>(sizeof(frame)) << std::endl;
+        // std::cout << "sizeof can_frame: " << static_cast<int>(sizeof(can_frame)) << std::endl;
+        // std::cout << "sizeof write:" << write(can_socket_, &frame, sizeof(frame)) << std::endl;
+        
         if (write(can_socket_, &frame, sizeof(frame)) != sizeof(struct can_frame)) {
-            RCLCPP_FATAL(this->get_logger(), "CAN socket write error");
+            // RCLCPP_FATAL(this->get_logger(), "CAN socket write error");
+            std::cerr << "Write failed: " << std::strerror(errno) << std::endl;
             return;
         }
     }
@@ -110,6 +118,7 @@ private:
         board += 1; // map board from [-1, 1] to [0, 2] for transmission
         struct can_frame frame;
         frame.can_id = vesc_id | (comm_can_id << 8);
+        frame.can_id |= CAN_EFF_FLAG;
         frame.can_dlc = 8;
         int32_t send_index = 0;
         // uint8_t buffer[8] = {0};
@@ -122,11 +131,11 @@ private:
     }
 
     void set_current_cb(const vesc_msgs::msg::Current::SharedPtr msg) {
-        send_current_command(1, CAN_PACKET_SET_CURRENT, msg->current);
+        send_current_command(static_cast<uint8_t>(18), CAN_PACKET_SET_CURRENT, msg->current);
     }
 
     void set_throttle_board_cb(const vesc_msgs::msg::ThrottleBoard::SharedPtr msg) {
-        send_throttle_board_command(1, CAN_SET_THROTTLE_BOARD, msg->throttle, msg->board);
+        send_throttle_board_command(0x12, CAN_SET_THROTTLE_BOARD, msg->throttle, msg->board);
     }
 
     // void set_duty_cb(const std_msgs::msg::Float32::SharedPtr msg) {
@@ -142,11 +151,11 @@ private:
         while (!stop_listener_) {
             ssize_t nbytes = read(can_socket_, &frame, sizeof(frame));
             if (nbytes > 0) {
-                RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
-                                    "Received CAN ID: 0x%X, Data: %02X %02X %02X %02X %02X %02X %02X %02X",
-                                    frame.can_id,
-                                    frame.data[0], frame.data[1], frame.data[2], frame.data[3],
-                                    frame.data[4], frame.data[5], frame.data[6], frame.data[7]);
+                // RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                //                     "Received CAN ID: 0x%X, Data: %02X %02X %02X %02X %02X %02X %02X %02X",
+                //                     frame.can_id,
+                //                     frame.data[0], frame.data[1], frame.data[2], frame.data[3],
+                //                     frame.data[4], frame.data[5], frame.data[6], frame.data[7]);
             }
         }
     }

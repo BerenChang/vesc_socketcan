@@ -13,6 +13,9 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
 
+    # os.system('sudo ip link set can1 up type can bitrate 1000000 dbitrate 8000000 restart-ms 1000 berr-reporting on fd on')
+    os.system('sudo ip link set can0 up type can bitrate 500000')
+
     joystick_node = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             FindPackageShare("teleop_twist_joy"), '/launch', '/teleop-launch.py']),
