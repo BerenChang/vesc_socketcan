@@ -111,10 +111,13 @@ private:
         }
     }
 
+    // throttle: [-1, 1], reverse [-1, 0), forward [0, 1]
+    // board: [-1, 1], left [-1, 0), right (0, 1]
     void send_throttle_board_command(uint8_t vesc_id, 
             CAN_PACKET_ID comm_can_id, 
             float throttle, float board) {
 
+        throttle += 1; // map throttle from [-1, 1] to [0, 2] for transmission
         board += 1; // map board from [-1, 1] to [0, 2] for transmission
         struct can_frame frame;
         frame.can_id = vesc_id | (comm_can_id << 8);
