@@ -10,15 +10,22 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(vesc_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
 add_executable(vesc_socketcan_node src/vesc_socketcan_node.cpp)
+add_executable(vesc_socketcan_node2 src/vesc_socketcan_node2.cpp)
+add_executable(joy_converter_node src/joy_converter_node.cpp)
 ament_target_dependencies(vesc_socketcan_node rclcpp vesc_msgs std_msgs)
+ament_target_dependencies(vesc_socketcan_node2 rclcpp vesc_msgs std_msgs)
+ament_target_dependencies(joy_converter_node rclcpp vesc_msgs std_msgs sensor_msgs)
 
 install(TARGETS
   vesc_socketcan_node
+  vesc_socketcan_node2
+  joy_converter_node
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

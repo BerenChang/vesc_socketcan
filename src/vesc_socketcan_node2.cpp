@@ -14,25 +14,27 @@
 #include "datatypes.h"
 #include "utils.cpp"
 
-class VescCanNode : public rclcpp::Node {
+class VescCanNode2 : public rclcpp::Node {
 public:
-    VescCanNode() : Node("vesc_socketcan_node"), stop_listener_(false) {
+    VescCanNode2() : Node("vesc_socketcan_node2"), stop_listener_(false) {
         // this->declare_parameter("vesc_id", 1);
         // this->get_parameter("vesc_id", vesc_id_);
-        setup_can_socket("can0");
+        setup_can_socket("can1");
 
         using std::placeholders::_1;
         current_sub_ = this->create_subscription<vesc_msgs::msg::Current>(
-            "vesc/set_current", 10, std::bind(&VescCanNode::set_current_cb, this, _1));
+            "vesc/set_current", 10, std::bind(&VescCanNode2::set_current_cb, this, _1));
+        // duty_sub_ = this->create_subscription<std_msgs::msg::Float32>(
+        //     "vesc/set_duty", 10, std::bind(&VescCanNode::set_duty_cb, this, _1));
         // rpm_sub_ = this->create_subscription<std_msgs::msg::Float32>(
         //     "vesc/set_rpm", 10, std::bind(&VescCanNode::set_rpm_cb, this, _1));
         tb_sub_ = this->create_subscription<vesc_msgs::msg::ThrottleBoard>(
-            "vesc/set_throttle_board", rclcpp::QoS(10).best_effort().durability_volatile(), std::bind(&VescCanNode::set_throttle_board_cb, this, _1));
+            "vesc/set_throttle_board", 10, std::bind(&VescCanNode2::set_throttle_board_cb, this, _1));
 
-        listener_thread_ = std::thread(&VescCanNode::listen_for_can_frames, this);
+        listener_thread_ = std::thread(&VescCanNode2::listen_for_can_frames, this);
     }
 
-    ~VescCanNode() {
+    ~VescCanNode2() {
         stop_listener_ = true;
         if (listener_thread_.joinable()) listener_thread_.join();
         if (can_socket_ >= 0) close(can_socket_);
@@ -46,6 +48,7 @@ private:
 
     rclcpp::Subscription<vesc_msgs::msg::Current>::SharedPtr current_sub_;
     rclcpp::Subscription<vesc_msgs::msg::ThrottleBoard>::SharedPtr tb_sub_;
+    // rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr duty_sub_;
     // rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr rpm_sub_;
     // rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr twist_sub_;
 
@@ -58,7 +61,7 @@ private:
 
         struct ifreq ifr;
         // std::strncpy(ifr.ifr_name, iface_name.c_str(), IFNAMSIZ);
-        std::strncpy(ifr.ifr_name, "can0", IFNAMSIZ-1);
+        std::strncpy(ifr.ifr_name, "can1", IFNAMSIZ-1);
         if (ioctl(can_socket_, SIOCGIFINDEX, &ifr) < 0) {
             RCLCPP_FATAL(this->get_logger(), "Failed to get interface index");
             return;
@@ -76,35 +79,33 @@ private:
         RCLCPP_INFO(this->get_logger(), "CAN socket setup on %s", iface_name.c_str());
     }
 
-    // set current_rel
     void send_current_command(uint8_t vesc_id, 
             CAN_PACKET_ID comm_can_id, 
             float current) {
 
-        struct can_frame frame_master;
-        frame_master.can_id = vesc_id | (comm_can_id << 8);
-        frame_master.can_id = 0x15 | (comm_can_id << 8);
-        frame_master.can_id |= CAN_EFF_FLAG;
-        frame_master.can_dlc = 4;
-        int32_t send_index_master = 0;
+        struct can_frame frame;
+        frame.can_id = vesc_id | (comm_can_id << 8);
+        frame.can_id = 0x12 | (comm_can_id << 8);
+        frame.can_id |= CAN_EFF_FLAG;
+        frame.can_dlc = 4;
+        int32_t send_index = 0;
         // uint8_t buffer[8] = {0};
-        
-        struct can_frame frame_slave;
-        frame_slave.can_id = vesc_id | (comm_can_id << 8);
-        frame_slave.can_id = 0x24 | (comm_can_id << 8);
-        frame_slave.can_id |= CAN_EFF_FLAG;
-        frame_slave.can_dlc = 4;
-        int32_t send_index_slave = 0;
 
-        buffer_append_float32(frame_master.data, current, 1e5, &send_index_master);
-        buffer_append_float32(frame_slave.data, current, 1e5, &send_index_slave);
+        buffer_append_float32(frame.data, current, 1e3, &send_index);
+        // frame.data = buffer;
 
-        if (write(can_socket_, &frame_master, sizeof(frame_master)) != sizeof(struct can_frame)) {
-            std::cerr << "Write failed: " << std::strerror(errno) << std::endl;
-            return;
-        }
+        // std::cout << "frame data: ";
+        // for (int i = 0; i < 4; ++i) {
+        //     std::cout << static_cast<int>(frame.data[i]) << " ";
+        // }
+        // std::cout << std::endl;
         
-        if (write(can_socket_, &frame_slave, sizeof(frame_slave)) != sizeof(struct can_frame)) {
+        // std::cout << "sizeof frame: " << static_cast<int>(sizeof(frame)) << std::endl;
+        // std::cout << "sizeof can_frame: " << static_cast<int>(sizeof(can_frame)) << std::endl;
+        // std::cout << "sizeof write:" << write(can_socket_, &frame, sizeof(frame)) << std::endl;
+        
+        if (write(can_socket_, &frame, sizeof(frame)) != sizeof(struct can_frame)) {
+            // RCLCPP_FATAL(this->get_logger(), "CAN socket write error");
             std::cerr << "Write failed: " << std::strerror(errno) << std::endl;
             return;
         }
@@ -133,19 +134,11 @@ private:
     }
 
     void set_current_cb(const vesc_msgs::msg::Current::SharedPtr msg) {
-        send_current_command(static_cast<uint8_t>(18), CAN_PACKET_SET_CURRENT_REL, msg->current);
+        send_current_command(static_cast<uint8_t>(18), CAN_PACKET_SET_CURRENT, msg->current);
     }
 
     void set_throttle_board_cb(const vesc_msgs::msg::ThrottleBoard::SharedPtr msg) {
-        send_throttle_board_command(0x15, CAN_SET_THROTTLE_BOARD, msg->throttle, msg->board);
-    }
-    
-    void set_zero_turn_cb(const vesc_msgs::msg::ThrottleBoard::SharedPtr msg) {
-        send_throttle_board_command(0x15, CAN_ZERO_TURN, msg->throttle, msg->board);
-    }
-    
-    void set_emergency_stop() {
-        send_emergency_stop_command(0x15, CAN_EMERGENCY_STOP);
+        send_throttle_board_command(0x12, CAN_SET_THROTTLE_BOARD, msg->throttle, msg->board);
     }
 
     // void set_duty_cb(const std_msgs::msg::Float32::SharedPtr msg) {
@@ -170,21 +163,14 @@ private:
         }
     }
 
-};
+}; // end of socketcan node
 
 int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
-  
-  auto vesc_can_node = std::make_shared<VescCanNode>();
-  
-  // rclcpp::spin(vesc_can_node);
-  
-  rclcpp::Rate rate(10);
-  
-  while (rclcpp::ok()) {
-      rclcpp::spin(vesc_can_node);
-      rate.sleep();
-  }
+
+  rclcpp::spin(std::make_shared<VescCanNode2>());
+
+  // RCLCPP_INFO(VescCanNode->get_logger(), "Vesc CanBus Node starting");
 
   rclcpp::shutdown();
 

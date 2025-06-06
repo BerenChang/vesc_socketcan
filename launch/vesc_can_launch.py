@@ -14,7 +14,8 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
 
     # os.system('sudo ip link set can1 up type can bitrate 1000000 dbitrate 8000000 restart-ms 1000 berr-reporting on fd on')
-    os.system('sudo ip link set can0 up type can bitrate 500000')
+    # os.system('sudo ip link set can0 up type can bitrate 500000')
+    # os.system('sudo ip link set can1 up type can bitrate 500000')
 
     joystick_node = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -22,6 +23,13 @@ def generate_launch_description():
         launch_arguments={
             'joy_config': 'xbox'
         }.items(),
+    )
+    
+    joy_converter_node = Node(
+        name='joy_converter_node',
+        package='vesc_socketcan',
+        executable='joy_converter_node',
+        output='screen'
     )
 
     vesc_can_node = Node(
@@ -31,8 +39,16 @@ def generate_launch_description():
         output='screen'
     )
 
+    vesc_can_node2 = Node(
+        name='vesc_socketcan_node2',
+        package='vesc_socketcan',
+        executable='vesc_socketcan_node2',
+        output='screen'
+    )
 
     return LaunchDescription([
         joystick_node,
-        vesc_can_node
+        joy_converter_node,
+        vesc_can_node,
+        # vesc_can_node2
     ])
