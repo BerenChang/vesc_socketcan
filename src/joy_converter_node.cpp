@@ -3,15 +3,27 @@
 #include "vesc_msgs/msg/throttle_board.hpp"
 #include "vesc_msgs/msg/current.hpp"
 
-enum ControlMode {
-    ThrottleBoard = 0,
-    Current = 1,
-    Rpm = 2
-};
+
 
 class JoyConverterNode : public rclcpp::Node {
+public: 
+    enum ControlMode {
+        ThrottleBoard = 0,
+        Current = 1,
+        Speed = 2
+    };
+
+    enum ButtonState {
+        ButtonNotPressed = 0,
+        TBButton = 1,
+        CurrentButton = 2,
+        SpeedButton = 3
+    };
+
 public:
-    JoyConverterNode() : Node("joy_converter_node"), control_mode_(ThrottleBoard), button_press_time_(0), last_button_state_(false) {
+    JoyConverterNode() 
+        : Node("joy_converter_node"), control_mode_(ThrottleBoard), now_button_state_(ButtonNotPressed), last_button_state_(ButtonNotPressed), 
+        num_modes_(3), tb_button_(0), current_button_(0), speed_button_(0), hold_duration_(1), button_pressed_time_(0) {
         // using std::placeholders::_1;
         
         // parameters
@@ -20,7 +32,7 @@ public:
         // this->declare_parameter<double>("hold_duration", 1.0);
         
         // get parameters
-        // mode_change_button_ = this->get_parameter("mode_change_button").as_int();
+        // tb_button_ = this->get_parameter("mode_change_button").as_int();
         // num_modes_ = this->get_parameter("num_modes").as_int();
         // hold_duration_ = this->get_parameter("hold_duration").as_double();
 
@@ -43,12 +55,15 @@ public:
     }
 
 private:
-    int control_mode_;
+    enum ControlMode control_mode_;
+    enum ButtonState now_button_state_;
+    enum ButtonState last_button_state_;
     int num_modes_;
-    float mode_change_button_;
+    float tb_button_;
+    float current_button_;
+    float speed_button_;
     double hold_duration_;
     double button_pressed_time_;
-    bool last_button_state_;
     
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr input_sub_;
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr mode_sub_;
@@ -59,18 +74,49 @@ private:
     
     void joy_converter_callback(const sensor_msgs::msg::Joy::SharedPtr msg) {
     
-        mode_change_button_ = msg->buttons[0]; // change to a different button later
+        tb_button_ = msg->buttons[0]; // change to a different button later
+        current_button_ = msg->buttons[1]; // change to a different button later
+        speed_button_ = msg->buttons[2]; // change to a different button later
     
-        // Check if mode change button is pressed
-        if (mode_change_button_ != 0) {
-            bool current_button_state = (msg->buttons[0] == 1);
+        // Check if mode-change button is pressed
+        if (tb_button_ != 0) { // #1 priority 
+            now_button_state_ = TBButton;
 
             // Record when button was first pressed
-            if (current_button_state && !last_button_state_) {
+            if (now_button_state_ != last_button_state_) {
                 button_pressed_time_ = this->now().seconds();
+                last_button_state_ = now_button_state_;
             }
 
-            last_button_state_ = current_button_state;
+        } else if (current_button_ != 0) { // #2 priority 
+            now_button_state_ = CurrentButton;
+
+            // Record when button was first pressed
+            if (now_button_state_ != last_button_state_) {
+                button_pressed_time_ = this->now().seconds();
+                last_button_state_ = now_button_state_;
+            }
+
+        } else if (speed_button_ != 0) { // #3 priority 
+            now_button_state_ = SpeedButton;
+
+            // Record when button was first pressed
+            if (now_button_state_ != last_button_state_) {
+                button_pressed_time_ = this->now().seconds();
+                last_button_state_ = now_button_state_;
+            }
+        }
+
+        // Check if mode-change button is released
+        if ((tb_button_ == 0) && (last_button_state_ == TBButton)) { // TB button is released
+            now_button_state_ = ButtonNotPressed;
+            button_pressed_time_ = 0;
+        } else if ((current_button_ == 0) && (last_button_state_ == CurrentButton)) { // Current button is released
+            now_button_state_ = ButtonNotPressed;
+            button_pressed_time_ = 0;
+        } else if ((speed_button_ == 0) && (last_button_state_ == SpeedButton)) { // Speed button is released
+            now_button_state_ = ButtonNotPressed;
+            button_pressed_time_ = 0;
         }
     
         switch (control_mode_) {
@@ -86,7 +132,7 @@ private:
                 converted_msg.current1 = msg->axes[4];
                 current_pub_->publish(converted_msg);
                 
-            case Rpm:
+            case Speed:
                 auto converted_msg = vesc_msgs::msg::Rpm();
                 converted_msg.rpm0 = msg->axes[1];
                 converted_msg.rpm1 = msg->axes[4];
@@ -95,9 +141,18 @@ private:
     }
     
     void timer_callback() {
-        if (last_button_state_ && (this->now().seconds() - button_pressed_time_ >= hold_duration_)) {
-            control_mode_ = (control_mode_ + 1) % num_modes_;
-            button_pressed_time_ = 0;
+        if (((this->now().seconds() - button_pressed_time_) >= hold_duration_)) {
+            if (last_button_state_ == TBButton) {
+                control_mode_ = ThrottleBoard;
+                button_pressed_time_ = 0;
+            } else if (last_button_state_ == CurrentButton) {
+                control_mode_ = Current;
+                button_pressed_time_ = 0;
+            } else if (last_button_state_ == SpeedButton) {
+                control_mode_ = Speed;
+                button_pressed_time_ = 0;
+            }
+            
         }
     }
 };
