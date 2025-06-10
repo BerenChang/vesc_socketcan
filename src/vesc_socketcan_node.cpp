@@ -8,6 +8,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <rclcpp/rclcpp.hpp>
+#include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "vesc_msgs/msg/throttle_board.hpp"
 #include "vesc_msgs/msg/current.hpp"
@@ -26,8 +27,10 @@ public:
             "vesc/set_current", 10, std::bind(&VescCanNode::set_current_cb, this, _1));
         // rpm_sub_ = this->create_subscription<std_msgs::msg::Float32>(
         //     "vesc/set_rpm", 10, std::bind(&VescCanNode::set_rpm_cb, this, _1));
+        // tb_sub_ = this->create_subscription<vesc_msgs::msg::ThrottleBoard>(
+        //     "vesc/set_throttle_board", rclcpp::QoS(10).best_effort().durability_volatile(), std::bind(&VescCanNode::set_throttle_board_cb, this, _1));
         tb_sub_ = this->create_subscription<vesc_msgs::msg::ThrottleBoard>(
-            "vesc/set_throttle_board", rclcpp::QoS(10).best_effort().durability_volatile(), std::bind(&VescCanNode::set_throttle_board_cb, this, _1));
+            "vesc/set_throttle_board", 10, std::bind(&VescCanNode::set_throttle_board_cb, this, _1));
 
         listener_thread_ = std::thread(&VescCanNode::listen_for_can_frames, this);
     }
@@ -79,7 +82,7 @@ private:
     // set current_rel
     void send_current_command(uint8_t vesc_id, 
             CAN_PACKET_ID comm_can_id, 
-            float current) {
+            float current0 ,float current1) {
 
         struct can_frame frame_master;
         frame_master.can_id = vesc_id | (comm_can_id << 8);
@@ -96,8 +99,8 @@ private:
         frame_slave.can_dlc = 4;
         int32_t send_index_slave = 0;
 
-        buffer_append_float32(frame_master.data, current, 1e5, &send_index_master);
-        buffer_append_float32(frame_slave.data, current, 1e5, &send_index_slave);
+        buffer_append_float32(frame_master.data, current1, 1e5, &send_index_master);
+        buffer_append_float32(frame_slave.data, current0, 1e5, &send_index_slave);
 
         if (write(can_socket_, &frame_master, sizeof(frame_master)) != sizeof(struct can_frame)) {
             std::cerr << "Write failed: " << std::strerror(errno) << std::endl;
@@ -131,21 +134,28 @@ private:
 
         write(can_socket_, &frame, sizeof(frame));
     }
+    
+    void send_emergency_stop_command() {
+        
+    }
 
     void set_current_cb(const vesc_msgs::msg::Current::SharedPtr msg) {
-        send_current_command(static_cast<uint8_t>(18), CAN_PACKET_SET_CURRENT_REL, msg->current);
+        send_current_command(static_cast<uint8_t>(18), CAN_PACKET_SET_CURRENT_REL, msg->current0, msg->current1);
+        // RCLCPP_INFO(this->get_logger(), "Sent Current command: %f", msg->current0);
     }
 
     void set_throttle_board_cb(const vesc_msgs::msg::ThrottleBoard::SharedPtr msg) {
         send_throttle_board_command(0x15, CAN_SET_THROTTLE_BOARD, msg->throttle, msg->board);
+        // RCLCPP_INFO(this->get_logger(), "Sent TB command: %f", msg->throttle);
     }
     
-    void set_zero_turn_cb(const vesc_msgs::msg::ThrottleBoard::SharedPtr msg) {
-        send_throttle_board_command(0x15, CAN_ZERO_TURN, msg->throttle, msg->board);
-    }
+    // void set_zero_turn_cb(const vesc_msgs::msg::ThrottleBoard::SharedPtr msg) {
+    //     send_throttle_board_command(0x15, CAN_ZERO_TURN, msg->throttle, msg->board);
+    // }
     
     void set_emergency_stop() {
-        send_emergency_stop_command(0x15, CAN_EMERGENCY_STOP);
+        // send_emergency_stop_command(0x15, CAN_EMERGENCY_STOP);
+        send_emergency_stop_command();
     }
 
     // void set_duty_cb(const std_msgs::msg::Float32::SharedPtr msg) {

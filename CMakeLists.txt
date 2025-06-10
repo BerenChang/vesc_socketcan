@@ -16,15 +16,15 @@ find_package(sensor_msgs REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 add_executable(vesc_socketcan_node src/vesc_socketcan_node.cpp)
-add_executable(vesc_socketcan_node2 src/vesc_socketcan_node2.cpp)
+# add_executable(vesc_socketcan_node2 src/vesc_socketcan_node2.cpp)
 add_executable(joy_converter_node src/joy_converter_node.cpp)
 ament_target_dependencies(vesc_socketcan_node rclcpp vesc_msgs std_msgs)
-ament_target_dependencies(vesc_socketcan_node2 rclcpp vesc_msgs std_msgs)
+# ament_target_dependencies(vesc_socketcan_node2 rclcpp vesc_msgs std_msgs)
 ament_target_dependencies(joy_converter_node rclcpp vesc_msgs std_msgs sensor_msgs)
 
 install(TARGETS
   vesc_socketcan_node
-  vesc_socketcan_node2
+  # vesc_socketcan_node2
   joy_converter_node
   DESTINATION lib/${PROJECT_NAME})
 
