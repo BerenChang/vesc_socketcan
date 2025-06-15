@@ -11,13 +11,19 @@ Tested on ROS2(Humble) with SocketCAN
 - You can send other CAN commands to VESC as well. They can be found in datatype.h.
 
 ### ID Frame Format
-CAN-frames all use 29-bit extended IDs. The ID of the receiver as well as the command ID is embedded in the extended ID of the CAN-frame as:
+We use 29-bit extended IDs for CANFD communication. Both VESC ID and the command ID are embedded in the extended ID of a CAN ID frame as:
 
 | **B28 - B16** | **B15 - B8** | **B7 - B0** |
 |-----------|----------|---------|
 | Unused | Command ID | VESC ID |
 
-| **Mode** | **Frame ID** |
+where
+
+- VESC ID is preset as 0x01 for master side, 0x02 for slave side.
+
+- Command ID is set as:
+
+| **Mode** | **Command ID** |
 |------|-------------|
 | ThrottleBoard control | CAN_SET_THROTTLE_BOARD | 
 | Current Control | CAN_PACKET_SET_CURRENT | 
@@ -30,26 +36,36 @@ CAN-frames all use 29-bit extended IDs. The ID of the receiver as well as the co
 All parameters are float32 and need to be scaled by 1e5 when put in a CAN data frame. Every parameter takes 4 bits.
 
 - ThrottleBoard control
+
 | **Parameter(x)** | **Range** | **Description** |
+|------|------|-------------|
 | Throttle | -1 <= x <= 1 | -1 <= x < 0 for backwards, 0 < x <= 1 for forwards. |
 | Board | -1 <= x <= 1 | -1 <= x < 0 for turning left, 0 < x <= 1 for turning right. |
 
 - Current Control
+
 | **Parameter** | **Range** | **Description** |
+|------|------|-------------|
 | current_rel0 | -1 <= x <= 1 | Relative current for master side. -1 <= x < 0 for negative current, 0 < x <= 1 for positive current. |
 | current_rel1 | -1 <= x <= 1 | Relative current for slave side. -1 <= x < 0 for negative current, 0 < x <= 1 for positive current. |
 
 - Speed Control
+
 | **Parameter** | **Range** | **Description** |
+|------|------|-------------|
 | rpm_rel0 | -1 <= x <= 1 | Relative speed for master side. -1 <= x < 0 for negative speed, 0 < x <= 1 for positive speed. |
 | rpm_rel1 | -1 <= x <= 1 | Relative speed for master side. -1 <= x < 0 for negative speed, 0 < x <= 1 for positive speed. |
 
 - Zero Turn
+
 | **Parameter** | **Range** | **Description** |
+|------|------|-------------|
 | Throttle | -1 <= x <= 1 | -1 <= x < 0 for backwards, 0 < x <= 1 for forwards. |
 | Board | -1 <= x <= 1 | -1 <= x < 0 for turning left, 0 < x <= 1 for turning right. |
 
 - Emergency Stop
-No data frame needed.
+
+  - No data frame needed.
+
 
 For more info, check: https://github.com/vedderb/bldc/blob/master/documentation/comm_can.md
