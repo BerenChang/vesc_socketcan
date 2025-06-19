@@ -1,4 +1,5 @@
 Tested on ROS2(Humble) with SocketCAN
+Use along with https://github.com/BerenChang/vesc_msgs
 
 ### Control Mode
 - In ROS, there are three regular control modes provided:
@@ -33,7 +34,9 @@ where
 
 ### Data Frame Format
 
-All parameters are float32 and need to be scaled by 1e5 when put in a CAN data frame. Every parameter takes 4 bits.
+Each parameter occupies 4 bytes and is represented as a float32, scaled by 1e5 when packed into a CAN data frame.
+
+For transmission purposes, all parameters are incremented by 1 in ROS to ensure they are positive. If you are implementing your own ROS node or sending commands directly to the firmware, be sure to add 1 to each parameter accordingly.
 
 - ThrottleBoard control
 
