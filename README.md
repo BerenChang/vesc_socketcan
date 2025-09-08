@@ -71,5 +71,50 @@ For transmission purposes, all parameters are incremented by 1 in ROS to ensure 
 
   - No data frame needed.
 
+### CANBUS Status Structure
+
+- CAN status 1
+
+| **Message** | **Unit** | **Description** |
+|------|------|-------------|
+| id | DNE | VESC ID. |
+| rpm | rev/min | Revolutions per minute. |
+| current | Amp | The current that goes into the motor. |
+| duty | % | . |
+
+- CAN status 2
+
+| **Message** | **Unit** | **Description** |
+|------|------|-------------|
+| id | DNE | VESC ID. |
+| amp_hours | Ah | Battery Amp Hours. |
+| amp_hours_charged | Ah | Battery Amp Hours Charged. |
+
+- CAN status 3
+
+| **Message** | **Unit** | **Description** |
+|------|------|-------------|
+| id | DNE | VESC ID. |
+| watt_hours | Wh | . |
+| watt_hours_charged | Wh | . |
+
+- CAN status 4
+
+| **Message** | **Unit** | **Description** |
+|------|------|-------------|
+| id | DNE | VESC ID. |
+| temp_fet | °C | Temperature of the MOSFET. |
+| temp_motor | °C | Temperature of the the motor. |
+| current_in | Amp | Current that goes into the motor. |
+| pid_pos_now | . | . |
+
+- CAN status 5
+
+| **Message** | **Unit** | **Description** |
+|------|------|-------------|
+| id | DNE | VESC ID. |
+| tacho_value | rev/min | . |
+| v_in | Volt | The battery voltage. |
+
 
 For more info, check: https://github.com/vedderb/bldc/blob/master/documentation/comm_can.md
