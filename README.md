@@ -80,7 +80,7 @@ For transmission purposes, all parameters are incremented by 1 in ROS to ensure 
 | id | DNE | VESC ID. |
 | rpm | rev/min | Revolutions per minute. |
 | current | Amp | The current that goes into the motor. |
-| duty | % | . |
+| duty | % | The percentage of MOSFET switching speed based on the voltage available. |
 
 - CAN status 2
 
@@ -95,8 +95,8 @@ For transmission purposes, all parameters are incremented by 1 in ROS to ensure 
 | **Message** | **Unit** | **Description** |
 |------|------|-------------|
 | id | DNE | VESC ID. |
-| watt_hours | Wh | . |
-| watt_hours_charged | Wh | . |
+| watt_hours | Wh | Watt Hours used. |
+| watt_hours_charged | Wh | Watt Hours charged. |
 
 - CAN status 4
 
@@ -106,14 +106,14 @@ For transmission purposes, all parameters are incremented by 1 in ROS to ensure 
 | temp_fet | °C | Temperature of the MOSFET. |
 | temp_motor | °C | Temperature of the the motor. |
 | current_in | Amp | Current that goes into the motor. |
-| pid_pos_now | . | . |
+| pid_pos_now | Angle | Position of rotor in terms of angle. |
 
 - CAN status 5
 
 | **Message** | **Unit** | **Description** |
 |------|------|-------------|
 | id | DNE | VESC ID. |
-| tacho_value | rev/min | . |
+| tacho_value | rev/min | Motor revolutions in ERPM. |
 | v_in | Volt | The battery voltage. |
 
 
