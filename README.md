@@ -2,7 +2,7 @@ Tested on ROS2(Humble) with SocketCAN
 
 Use along with https://github.com/BerenChang/vesc_msgs
 
-### Control Mode
+## Control Mode
 - In ROS, there are three regular control modes provided:
   - ThrottleBoard control,
   - Current Control,
@@ -12,7 +12,7 @@ Use along with https://github.com/BerenChang/vesc_msgs
 - Emergency Stop mode triggers a fault FAULT_CODE_CANBUS_EMERGENCY_STOP and cut the motor current right away.
 - You can send other CAN commands to VESC as well. They can be found in datatype.h.
 
-### ID Frame Format
+## ID Frame Format
 We use 29-bit extended IDs for CANFD communication. Both VESC ID and the command ID are embedded in the extended ID of a CAN ID frame as:
 
 | **B28 - B16** | **B15 - B8** | **B7 - B0** |
@@ -33,7 +33,7 @@ where
 | Zero Turn | CAN_ZERO_TURN |
 | Emergency Stop | CAN_EMERGENCY_STOP |
 
-### Data Frame Format
+## Data Frame Format
 
 Each parameter occupies 4 bytes and is represented as a float32, scaled by 1e5 when packed into a CAN data frame.
 
@@ -71,7 +71,7 @@ For transmission purposes, all parameters are incremented by 1 in ROS to ensure 
 
   - No data frame needed.
 
-### CANBUS Status Structure
+## CANBUS Status Structure
 
 - CAN status 1
 
